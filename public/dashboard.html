@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard | JWT Auth</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background-color: #343a40;
+      color: #fff;
+      padding: 20px 0;
+      margin-bottom: 30px;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-name {
+      margin-right: 15px;
+    }
+
+    .logout-btn {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .logout-btn:hover {
+      background-color: #c82333;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+
+    .card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card-title {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #007bff;
+    }
+
+    .card-content {
+      margin-bottom: 15px;
+    }
+
+    .user-profile {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background-color: #6c757d;
+      margin: 0 auto 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 36px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <nav>
+      <div class="logo">JWT Auth Dashboard</div>
+      <div class="user-info">
+        <span class="user-name" id="userDisplayName">Welcome, User!</span>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <h1>Dashboard</h1>
+  <p>Welcome to your secure dashboard. Your session is protected with JWT authentication.</p>
+
+  <div class="dashboard">
+    <div class="card user-profile">
+      <div class="profile-pic" id="profileInitial">U</div>
+      <h2 id="userName">Username</h2>
+      <p id="userEmail">user@example.com</p>
+      <p id="userRole">Role: User</p>
+      <p>Account created: <span id="accountCreated">--/--/----</span></p>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Account Security</h3>
+      <div class="card-content">
+        <p>Your account is protected with JWT authentication.</p>
+        <p>Last login: <span id="lastLogin">--/--/---- --:--</span></p>
+      </div>
+      <button class="action-btn" id="changePasswordBtn">Change Password</button>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Activity</h3>
+      <div class="card-content">
+        <p>Recent activity will be displayed here.</p>
+        <ul id="activityList">
+          <li>No recent activity</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal (hidden by default) -->
+<div id="passwordModal" class="modal hidden">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Change Password</h2>
+    <form id="changePasswordForm">
+      <div class="form-group">
+        <label for="currentPassword">Current Password</label>
+        <input type="password" id="currentPassword" required>
+      </div>
+      <div class="form-group">
+        <label for="newPassword">New Password</label>
+        <input type="password" id="newPassword" required>
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm New Password</label>
+        <input type="password" id="confirmPassword" required>
+      </div>
+      <button type="submit">Update Password</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // Redirect to login page if no token is found
+      window.location.href = '/';
+      return;
+    }
+
+    // Fetch user data from server
+    fetchUserData();
+
+    // Set up event listeners
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('changePasswordBtn').addEventListener('click', showPasswordModal);
+
+    // Close modal when clicking the X
+    const closeButtons = document.getElementsByClassName('close');
+    for (let i = 0; i < closeButtons.length; i++) {
+      closeButtons[i].addEventListener('click', function() {
+        document.getElementById('passwordModal').classList.add('hidden');
+      });
+    }
+
+    // Handle password change form submission
+    document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      changePassword();
+    });
+  });
+
+  async function fetchUserData() {
+    try {
+      const response = await fetch('/api/v1/users/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const userData = await response.json();
+
+      // Update UI with user data
+      document.getElementById('userDisplayName').textContent = `Welcome, ${userData.username}!`;
+      document.getElementById('userName').textContent = userData.username;
+      document.getElementById('userEmail').textContent = userData.email;
+      document.getElementById('userRole').textContent = `Role: ${userData.role}`;
+      document.getElementById('profileInitial').textContent = userData.username.charAt(0).toUpperCase();
+
+      if (userData.createdAt) {
+        const createdDate = new Date(userData.createdAt);
+        document.getElementById('accountCreated').textContent = createdDate.toLocaleDateString();
+      }
+
+      // Set last login time (this would come from your server)
+      document.getElementById('lastLogin').textContent = new Date().toLocaleString();
+
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      // Handle error - could redirect to login or show error message
+    }
+  }
+
+  function logout() {
+    // Clear local storage
+    localStorage.removeItem('token');
+
+    // Redirect to login page
+    window.location.href = '/';
+  }
+
+  function showPasswordModal() {
+    document.getElementById('passwordModal').classList.remove('hidden');
+  }
+
+  async function changePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Validate passwords
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match!');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/users/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to change password');
+      }
+
+      alert('Password updated successfully!');
+      document.getElementById('passwordModal').classList.add('hidden');
+      document.getElementById('changePasswordForm').reset();
+
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert(error.message || 'An error occurred while changing your password');
+    }
+  }
+</script>
+</body>
+</html>

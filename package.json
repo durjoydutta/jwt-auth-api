@@ -5,8 +5,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "dev": "node --env-file .env --watch src/app.js",
-    "build": "node --env-file .env src/app.js"
+    "dev": "node --env-file .env --watch server.js",
+    "build": "node --env-file .env server.js"
   },
   "repository": {
     "type": "git",
@@ -22,7 +22,9 @@
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.15.0",
+    "mongoose": "^8.13.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
