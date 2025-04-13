@@ -4,10 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="927f9fb0-8fbb-45f7-8776-364eb68b60cd" name="Changes" comment="Add MongoDB integration and authentication functionality&#10;&#10;Introduce models, controllers, and routes for user authentication with MongoDB. Included environment variable updates, frontend auth form, and necessary dependencies for MongoDB and Mongoose.">
+    <list default="true" id="927f9fb0-8fbb-45f7-8776-364eb68b60cd" name="Changes" comment="Implement user authentication via MongoDB using Mongoose models, controllers, and routes. Added token generation and verification methods, along with required updates to environment variables and dependencies. This ensures secure user management and interaction with the database.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/public/dashboard/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/public/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/app.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/controllers/auth.controller.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/controllers/auth.controller.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/user.model.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/user.model.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/routes/dashboard.route.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,6 +72,11 @@
     ]
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Codes\WebstormProjects\jwt-login\public\dashboard" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -83,7 +92,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1744565455540</updated>
-      <workItem from="1744565456599" duration="12469000" />
+      <workItem from="1744565456599" duration="17769000" />
     </task>
     <task id="LOCAL-00001" summary="Add MongoDB integration and authentication functionality&#10;&#10;Introduce models, controllers, and routes for user authentication with MongoDB. Included environment variable updates, frontend auth form, and necessary dependencies for MongoDB and Mongoose.">
       <option name="closed" value="true" />
@@ -93,7 +102,15 @@
       <option name="project" value="LOCAL" />
       <updated>1744576719991</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Implement user authentication via MongoDB using Mongoose models, controllers, and routes. Added token generation and verification methods, along with required updates to environment variables and dependencies. This ensures secure user management and interaction with the database.">
+      <option name="closed" value="true" />
+      <created>1744578224950</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1744578224950</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -101,6 +118,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Add MongoDB integration and authentication functionality&#10;&#10;Introduce models, controllers, and routes for user authentication with MongoDB. Included environment variable updates, frontend auth form, and necessary dependencies for MongoDB and Mongoose." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add MongoDB integration and authentication functionality&#10;&#10;Introduce models, controllers, and routes for user authentication with MongoDB. Included environment variable updates, frontend auth form, and necessary dependencies for MongoDB and Mongoose." />
+    <MESSAGE value="Implement user authentication via MongoDB using Mongoose models, controllers, and routes. Added token generation and verification methods, along with required updates to environment variables and dependencies. This ensures secure user management and interaction with the database." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implement user authentication via MongoDB using Mongoose models, controllers, and routes. Added token generation and verification methods, along with required updates to environment variables and dependencies. This ensures secure user management and interaction with the database." />
   </component>
 </project>

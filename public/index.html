@@ -14,12 +14,22 @@
             <input type="text" name="username" placeholder="username" id="username">
         </label>
         <br>
+        <label style="display: none" id="email-label">
+            email:
+            <input type="email" name="email" placeholder="username" id="email">
+        </label>
+        <br>
         <label>
             password:
             <input type="password" name="password" placeholder="password" id="password">
         </label>
         <br>
-        <button type="submit" onClick="handleSubmit()" id="btn">login</button>
+        <div id="reg-login">
+            <p>Don't have an account? <button id="toggleBtn">SignUp</button></p>
+            <button type="submit" id="authBtn">Login</button>
+        </div>
+
+
     </form>
 
     <script src="index.js"></script>
