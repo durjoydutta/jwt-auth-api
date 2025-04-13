@@ -18,18 +18,22 @@ export const signUp = async  (req, res, next) => {
             return res.status(409).send('User already exists');
         }
 
-        const user = await User.create([{username, email, password}], {session});
+        const newUser = await User.create([{username, email, password}], {session});
 
         await session.commitTransaction();
 
-        if (user) {
+        if (newUser) {
+            const accessToken = await newUser[0].generateAuthToken();
+            // const verify = await User.findByToken(accessToken);
+            // console.log(verify);
             return res.status(201).json({
                 success: true,
                 message: 'User created successfully',
+                token: accessToken,
                 data: {
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
+                    id: newUser[0]._id,
+                    username: newUser[0].username,
+                    email: newUser[0].email,
                 }
             })
         } else {

@@ -54,7 +54,17 @@ UserSchema.pre('save', async function(next) {
 
 // Method to generate access token
 UserSchema.methods.generateAuthToken = async function() {
-    return await jwt.sign({ _id: this._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return await jwt.sign({ _id: this._id, username: this.username, email: this.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+};
+
+// Method to verify user's access token
+UserSchema.statics.findByToken = async function(token) {
+    try {
+        const decoded = await jwt.verify(token, JWT_SECRET);
+        return decoded._id;
+    } catch (error) {
+        return null;
+    }
 };
 
 // Method to check if entered password is correct
