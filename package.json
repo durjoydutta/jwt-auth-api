@@ -1,0 +1,32 @@
+{
+  "name": "jwt-login",
+  "version": "1.0.0",
+  "description": "A simple JWT authentication system using node & express",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file .env --watch src/app.js",
+    "build": "node --env-file .env src/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/durjoydutta/jwt-auth.git"
+  },
+  "author": "@durjoydutta",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/durjoydutta/jwt-auth/issues"
+  },
+  "homepage": "https://github.com/durjoydutta/jwt-auth#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "eslint": "^9.24.0",
+    "globals": "^16.0.0"
+  }
+}
