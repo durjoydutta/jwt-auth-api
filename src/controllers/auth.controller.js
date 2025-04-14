@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import User from "../models/user.model.js";
 import { NODE_ENV } from "../../config/env.config.js";
+import sendVerificationEmailHelper from "../../utils/sendMailHelper.js";
 
 const cookieOptions = {
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
@@ -9,58 +9,71 @@ const cookieOptions = {
   sameSite: NODE_ENV === "production" ? "None" : "Lax",
 };
 
-export const signUp = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
+export const signUp = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
     if (!username || !email) {
-      return res.status(400).send("Both Username and email is required");
+      return res.status(400).send("Both Username and email are required");
     }
     if (!password) {
       return res.status(400).send("Password is required");
     }
-    const isExistingUser = await User.exists({
+
+    const existingUser = await User.findOne({
       $or: [{ email }, { username }],
     });
-    if (isExistingUser) {
-      return res.status(409).send("User already exists");
+    if (existingUser) {
+      if (!existingUser.isVerified) {
+        // Resend verification email
+        await sendVerificationEmailHelper(existingUser);
+
+        return res.status(409).json({
+          success: false,
+          message:
+            "User already exists but is not verified. A new verification email has been sent.",
+          isVerified: false, // Flag to indicate unverified user
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        message: "User already exists.",
+        isVerified: true, // Flag to indicate verified duplicate user
+      });
     }
 
-    const newUser = await User.create([{ username, email, password }], {
-      session,
+    const newUser = new User({
+      username,
+      email,
+      password,
+      isVerified: false, // Mark user as unverified initially
     });
 
-    await session.commitTransaction();
+    await newUser.save();
 
     if (newUser) {
-      const accessToken = await newUser[0].generateAuthToken();
-
-      res.cookie("jwt", accessToken, cookieOptions);
+      // Send verification email
+      await sendVerificationEmailHelper(newUser);
 
       return res.status(201).json({
         success: true,
-        message: "User created successfully",
-        token: accessToken,
+        message: "User created successfully. Please verify your email.",
         data: {
-          id: newUser[0]._id,
-          username: newUser[0].username,
-          email: newUser[0].email,
+          id: newUser._id,
+          username: newUser.username,
+          email: newUser.email,
         },
       });
     } else {
       return res.status(400).send("Unable to create user");
     }
   } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
-    return res.status(400).send(error.message);
-  } finally {
-    await session.endSession();
+    return res.status(500).send(error.message);
   }
 };
 
-export const signIn = async (req, res, next) => {
+export const signIn = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -80,6 +93,24 @@ export const signIn = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: `Sorry, User ${user.username} is blocked`,
+      });
+    }
+
+    if (!user.isVerified) {
+      // User is not verified, send verification email again
+      await sendVerificationEmailHelper(user);
+      return res.status(403).json({
+        success: false,
+        message:
+          "Verfication Email sent. Please verify your email before logging in",
+        isVerified: false, // Flag to indicate unverified user
       });
     }
 
@@ -118,7 +149,7 @@ export const signIn = async (req, res, next) => {
   }
 };
 
-export const signOut = (req, res, next) => {
+export const signOut = (req, res) => {
   try {
     res.clearCookie("jwt", cookieOptions);
     return res.status(200).json({
@@ -129,6 +160,112 @@ export const signOut = (req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "An error occurred during sign out",
+      error: error.message,
+    });
+  }
+};
+
+// to verify the otp sent by the user and the one stored in the database
+// and to update the user status to verified
+export const verifyOTP = async (req, res) => {
+  try {
+    const { username, otp } = req.body;
+
+    if (!username || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Username and OTP are required",
+      });
+    }
+
+    const user = await User.findOne({ username }).select(
+      "+verifyOTP +verifyOTPExpires"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: `Sorry, User ${user.username} is blocked`,
+      });
+    }
+
+    if (user.verifyOTP !== otp || !user.verifyOTP) {
+      //   console.log("OTP mismatch: ", user.verifyOTP, otp);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (user.verifyOTPExpires < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+    }
+
+    user.isVerified = true;
+    user.verifyOTP = undefined;
+    user.verifyOTPExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred during OTP verification",
+      error: error.message,
+    });
+  }
+};
+
+export const sendVerificationEmail = async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: "Username is required",
+      });
+    }
+
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "User already verified",
+      });
+    }
+
+    await sendVerificationEmailHelper(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification email sent successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while sending verification email",
       error: error.message,
     });
   }
