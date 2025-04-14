@@ -4,7 +4,7 @@ import transporter from "../config/mailer.config.js";
 //helper function to sendVerificationEmail
 // this function is used in auth.controller.js
 // to send verification email to the user
-const sendVerificationEmailHelper = async (user) => {
+const sendVerificationMailHelper = async (user) => {
   const verifyOTP = Math.floor(100000 + Math.random() * 900000).toString();
   user.verifyOTP = verifyOTP;
   user.verifyOTPExpires = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
@@ -20,4 +20,4 @@ const sendVerificationEmailHelper = async (user) => {
 
   await transporter.sendMail(mailOptions);
 };
-export default sendVerificationEmailHelper;
+export default sendVerificationMailHelper;

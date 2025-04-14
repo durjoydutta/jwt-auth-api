@@ -1,6 +1,6 @@
 import User from "../models/user.model.js";
 import { NODE_ENV } from "../../config/env.config.js";
-import sendVerificationEmailHelper from "../../utils/sendMailHelper.js";
+import sendVerificationMailHelper from "../../utils/sendVerificationMailHelper.js";
 
 const cookieOptions = {
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
@@ -26,7 +26,7 @@ export const signUp = async (req, res) => {
     if (existingUser) {
       if (!existingUser.isVerified) {
         // Resend verification email
-        await sendVerificationEmailHelper(existingUser);
+        await sendVerificationMailHelper(existingUser);
 
         return res.status(409).json({
           success: false,
@@ -54,7 +54,7 @@ export const signUp = async (req, res) => {
 
     if (newUser) {
       // Send verification email
-      await sendVerificationEmailHelper(newUser);
+      await sendVerificationMailHelper(newUser);
 
       return res.status(201).json({
         success: true,
@@ -105,7 +105,7 @@ export const signIn = async (req, res) => {
 
     if (!user.isVerified) {
       // User is not verified, send verification email again
-      await sendVerificationEmailHelper(user);
+      await sendVerificationMailHelper(user);
       return res.status(403).json({
         success: false,
         message:
@@ -196,8 +196,12 @@ export const verifyOTP = async (req, res) => {
       });
     }
 
-    if (!user.verifyOTP || user.verifyOTP !== otp || user.verifyOTPExpires < Date.now()) {
-      //   console.log("OTP mismatch: ", user.verifyOTP, otp);
+    if (
+      !user.verifyOTP ||
+      user.verifyOTP !== otp ||
+      user.verifyOTPExpires < Date.now()
+    ) {
+      // console.log("OTP mismatch: ", user.verifyOTP, otp);
       return res.status(400).json({
         success: false,
         message: "The OTP you entered is either incorrect or has expired",
@@ -222,7 +226,7 @@ export const verifyOTP = async (req, res) => {
   }
 };
 
-export const sendVerificationEmail = async (req, res) => {
+export const sendVerificationMail = async (req, res) => {
   try {
     const { username } = req.body;
 
@@ -249,7 +253,7 @@ export const sendVerificationEmail = async (req, res) => {
       });
     }
 
-    await sendVerificationEmailHelper(user);
+    await sendVerificationMailHelper(user);
 
     return res.status(200).json({
       success: true,
