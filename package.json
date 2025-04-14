@@ -1,12 +1,12 @@
 {
-  "name": "jwt-login",
+  "name": "jwt-auth-api",
   "version": "1.0.0",
   "description": "A full-fledged JWT authentication system built from scratch in nodejs & express",
   "main": "app.js",
   "type": "module",
   "scripts": {
     "dev": "node --env-file .env --watch server.js",
-    "build": "node --env-file .env server.js"
+    "start": "node --env-file .env server.js"
   },
   "repository": {
     "type": "git",
