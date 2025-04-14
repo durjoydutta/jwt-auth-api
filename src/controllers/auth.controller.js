@@ -196,15 +196,15 @@ export const verifyOTP = async (req, res) => {
       });
     }
 
-    if (user.verifyOTP !== otp || !user.verifyOTP) {
+    if (!user.verifyOTP || user.verifyOTP !== otp || user.verifyOTPExpires < Date.now()) {
       //   console.log("OTP mismatch: ", user.verifyOTP, otp);
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP",
+        message: "The OTP you entered is either incorrect or has expired",
       });
     }
 
-    if (user.verifyOTPExpires < Date.now()) {
+    if () {
       return res.status(400).json({
         success: false,
         message: "OTP has expired",
