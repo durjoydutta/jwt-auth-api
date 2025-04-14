@@ -1,7 +1,7 @@
 {
   "name": "jwt-login",
   "version": "1.0.0",
-  "description": "A simple JWT authentication system using node & express",
+  "description": "A full-fledged JWT authentication system built from scratch in nodejs & express",
   "main": "app.js",
   "type": "module",
   "scripts": {
@@ -21,10 +21,12 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.15.0",
-    "mongoose": "^8.13.2"
+    "mongoose": "^8.13.2",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
