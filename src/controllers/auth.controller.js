@@ -1,6 +1,8 @@
 import User from "../models/user.model.js";
 import { NODE_ENV } from "../../config/env.config.js";
 import sendVerificationMailHelper from "../../utils/sendVerificationMailHelper.js";
+import sendPasswordResetMailHelper from "../../utils/sendPasswordResetMailHelper.js";
+import { genOTP, otpExpires } from "../../utils/generateOTP.js";
 
 const cookieOptions = {
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
@@ -23,23 +25,11 @@ export const signUp = async (req, res) => {
     const existingUser = await User.findOne({
       $or: [{ email }, { username }],
     });
+
     if (existingUser) {
-      if (!existingUser.isVerified) {
-        // Resend verification email
-        await sendVerificationMailHelper(existingUser);
-
-        return res.status(409).json({
-          success: false,
-          message:
-            "User already exists but is not verified. A new verification email has been sent.",
-          isVerified: false, // Flag to indicate unverified user
-        });
-      }
-
       return res.status(409).json({
         success: false,
-        message: "User already exists.",
-        isVerified: true, // Flag to indicate verified duplicate user
+        message: "Sorry, this username or email is already taken.",
       });
     }
 
@@ -47,15 +37,11 @@ export const signUp = async (req, res) => {
       username,
       email,
       password,
-      isVerified: false, // Mark user as unverified initially
     });
 
     await newUser.save();
 
     if (newUser) {
-      // Send verification email
-      await sendVerificationMailHelper(newUser);
-
       return res.status(201).json({
         success: true,
         message: "User created successfully. Please verify your email.",
@@ -103,16 +89,13 @@ export const signIn = async (req, res) => {
       });
     }
 
-    if (!user.isVerified) {
-      // User is not verified, send verification email again
-      await sendVerificationMailHelper(user);
-      return res.status(403).json({
-        success: false,
-        message:
-          "Verfication Email sent. Please verify your email before logging in",
-        isVerified: false, // Flag to indicate unverified user
-      });
-    }
+    // if (!user.isVerified) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Please verify your email before logging in",
+    //     isVerified: false, // Flag to indicate unverified user
+    //   });
+    // }
 
     // Check if password is correct
     const isPasswordCorrect = await user.comparePassword(password);
@@ -134,10 +117,9 @@ export const signIn = async (req, res) => {
       message: "Logged in successfully",
       token,
       data: {
-        id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -165,20 +147,82 @@ export const signOut = (req, res) => {
   }
 };
 
+export const sendVerificationMail = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const user = await User.findOne({ _id: userId }).select(
+      "+verifyOTP +verifyOTPExpires"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: `Sorry, User ${user.username} is blocked`,
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "User already verified",
+      });
+    }
+
+    if (user.verifyOTPExpires && user.verifyOTPExpires > Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "Please wait before requesting a new verification code",
+      });
+    }
+
+    user.verifyOTP = genOTP();
+    user.verifyOTPExpires = otpExpires();
+    await user.save();
+
+    await sendVerificationMailHelper(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification email sent successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while sending verification email",
+      error: error.message,
+    });
+  }
+};
+
 // to verify the otp sent by the user and the one stored in the database
 // and to update the user status to verified
 export const verifyOTP = async (req, res) => {
   try {
-    const { username, otp } = req.body;
+    const { userId, otp } = req.body;
 
-    if (!username || !otp) {
+    if (!userId || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Username and OTP are required",
+        message: "User ID and OTP are required",
       });
     }
 
-    const user = await User.findOne({ username }).select(
+    const user = await User.findOne({ _id: userId }).select(
       "+verifyOTP +verifyOTPExpires"
     );
 
@@ -226,18 +270,20 @@ export const verifyOTP = async (req, res) => {
   }
 };
 
-export const sendVerificationMail = async (req, res) => {
+export const sendPasswordResetMail = async (req, res) => {
   try {
-    const { username } = req.body;
+    const { email, username } = req.body;
 
-    if (!username) {
+    if (!email && !username) {
       return res.status(400).json({
         success: false,
-        message: "Username is required",
+        message: "Either email or username is required",
       });
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ $or: [{ email }, { username }] }).select(
+      "+resetOTP +resetOTPExpires"
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -246,24 +292,84 @@ export const sendVerificationMail = async (req, res) => {
       });
     }
 
-    if (user.isVerified) {
-      return res.status(400).json({
+    if (user.isBlocked) {
+      return res.status(403).json({
         success: false,
-        message: "User already verified",
+        message: `Sorry, User ${user.username} is blocked`,
       });
     }
 
-    await sendVerificationMailHelper(user);
+    if (user.resetOTPExpires && user.resetOTPExpires > Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "A password reset code has already been sent. Please wait for it to expire.",
+      });
+    }
+
+    user.resetOTP = genOTP();
+    user.resetOTPExpires = otpExpires();
+    await user.save();
+
+    await sendPasswordResetMailHelper(user);
 
     return res.status(200).json({
       success: true,
-      message: "Verification email sent successfully",
+      message: "Password reset email sent successfully",
+      username: user.username,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "An error occurred while sending verification email",
+      message: "An error occurred while sending password reset email",
       error: error.message,
+    });
+  }
+};
+
+export const verifyPasswordResetOTP = async (req, res) => {
+  try {
+    const { username, otp, newPassword } = req.body;
+
+    if (!username || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Username, OTP, and new password are required",
+      });
+    }
+
+    const user = await User.findOne({ username }).select(
+      "+resetOTP +resetOTPExpires"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.resetOTP !== otp || user.resetOTPExpires < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "The OTP you entered is either incorrect or has expired",
+      });
+    }
+
+    user.password = newPassword;
+    user.resetOTP = undefined;
+    user.resetOTPExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password has been reset successfully. Log in with your new password.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `An error occurred during OTP verification: ${error.message}`,
     });
   }
 };

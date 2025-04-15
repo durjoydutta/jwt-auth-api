@@ -36,6 +36,15 @@ const UserSchema = new mongoose.Schema(
     },
     verifyOTPExpires: {
       type: Date,
+      select: false,
+    },
+    resetOTP: {
+      type: String,
+      select: false,
+    },
+    resetOTPExpires: {
+      type: Date,
+      select: false,
     },
     isVerified: {
       type: Boolean,
@@ -44,6 +53,7 @@ const UserSchema = new mongoose.Schema(
     isBlocked: {
       type: Boolean,
       default: false,
+      select: false,
     },
     role: {
       type: String,
