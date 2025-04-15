@@ -1,0 +1,44 @@
+### sign-up
+POST http://localhost:5500/api/v1/auth/sign-up
+Content-Type: application/json
+    
+{
+    "username": "deluxebits1337as",
+    "password": "mynewpassword",
+    "email": "deluxebits1337gmail.comd"
+}
+
+### sign-in
+POST http://localhost:5500/api/v1/auth/sign-in
+Content-Type: application/json
+
+{
+    "username": "deluxebits1337",
+    "password": "mynewpassword"
+}
+
+### sign-out
+POST http://localhost:5500/api/v1/auth/sign-out
+Content-Type: application/json
+
+{
+    "username": "deluxebits1337",
+    "password": "mynewpassword"
+}
+
+### send-verification-mail
+POST http://localhost:5500/api/v1/auth/send-verification-email
+Content-Type: application/json
+
+{
+    "username": "deluxebits1337"
+}
+
+### verify-otp
+POST http://localhost:5500/api/v1/auth/verify-otp
+Content-Type: application/json
+
+{
+    "username": "deluxebits1337",
+    "otp": "546016"
+}
