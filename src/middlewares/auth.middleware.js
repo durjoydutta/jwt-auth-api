@@ -17,10 +17,11 @@ const authMiddleWare = async (req, res, next) => {
     }
     const user = await User.findOne({ _id: decodedToken._id });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Unauthorized or Invalid Token" });
     }
     req.body = req.body || {};
-    req.body.userId = decodedToken._id;
+    req.body.userId = user._id;
+    req.body.user = user;
     next();
   } catch (err) {
     return res.status(500).json({
