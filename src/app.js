@@ -11,8 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({ origin: true, credentials: true }));
 
-app.use(express.static("public"));
-
 //routes
 app.use(`${API_BASE_URL}/auth`, authRouter);
 

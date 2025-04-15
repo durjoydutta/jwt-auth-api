@@ -147,6 +147,23 @@ export const signOut = (req, res) => {
   }
 };
 
+// this controller will use the auth middleware to check if the user is authenticated
+// and will return the response accordingly
+export const isAuthenticated = (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "User is authenticated",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred during authentication",
+      error: error.message,
+    });
+  }
+};
+
 export const sendVerificationMail = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -233,10 +250,10 @@ export const verifyOTP = async (req, res) => {
       });
     }
 
-    if (user.isBlocked) {
+    if (user.isBlocked || user.isVerified) {
       return res.status(403).json({
         success: false,
-        message: `Sorry, User ${user.username} is blocked`,
+        message: `Sorry, User ${user.username} is ineligible for verification`,
       });
     }
 
