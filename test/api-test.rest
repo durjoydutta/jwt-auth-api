@@ -9,7 +9,7 @@ Content-Type: application/json
 }
 
 ### sign-in
-POST http://localhost:5500/api/v1/auth/sign-in
+POST https://ddc-auth.vercel.app/api/v1/auth/sign-in
 Content-Type: application/json
 
 {
