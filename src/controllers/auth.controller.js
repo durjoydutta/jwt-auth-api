@@ -7,18 +7,16 @@ import { genOTP, otpExpires } from "../../utils/generateOTP.js";
 import TokenBlacklist from "../models/tokenBlacklist.model.js";
 
 // Update your cookie options
-const accessTokenCookieOptions = {
-  expires: new Date(Date.now() + 30 * 1000), // 30 seconds
-  httpOnly: false, // Allow JavaScript access to the access token
-  secure: NODE_ENV === "production",
-  sameSite: NODE_ENV === "production" ? "None" : "Lax",
-};
-
 const refreshTokenCookieOptions = {
   expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   httpOnly: true, // Prevent JavaScript access
   secure: NODE_ENV === "production",
   sameSite: NODE_ENV === "production" ? "None" : "Lax",
+};
+
+const accessTokenCookieOptions = {
+  ...refreshTokenCookieOptions,
+  httpOnly: false,
 };
 
 export const signUp = async (req, res) => {

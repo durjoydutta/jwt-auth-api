@@ -6,7 +6,9 @@ const authMiddleWare = async (req, res, next) => {
   try {
     // Get token from header or cookie
     const token =
-      req.headers["authorization"]?.split(" ")[1] || req.cookies?.accessToken;
+      req.headers["authorization"]?.split(" ")[1] ||
+      req.headers["Authorization"]?.split(" ")[1] ||
+      req.cookies?.accessToken;
 
     if (!token) {
       return res

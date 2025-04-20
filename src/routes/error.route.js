@@ -10,10 +10,8 @@ errorRouter.use((req, res, next) => {
   next(error);
 });
 
-// Global error handler
-errorRouter.use((err, req, res) => {
-  console.error(err.stack);
-
+// Global error handler - FIXED VERSION
+errorRouter.use((err, req, res, next) => {
   // Handle specific error types
   if (err.name === "ValidationError") {
     return res.status(400).json({
