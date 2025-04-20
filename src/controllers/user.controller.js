@@ -89,7 +89,6 @@ export const deleteUser = async (req, res) => {
     // admins cannot delete other admins
     // only admins can delete users
     // admins can delete themselves
-    console.log(currUser.username, delUser.username);
     if (currUser.username !== delUser.username && delUser.role === "admin") {
       return res.status(400).json({
         message: `[${delUser.username}] has Administrator privileges and cannot be deleted.`,
