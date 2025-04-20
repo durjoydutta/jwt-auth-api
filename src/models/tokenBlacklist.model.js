@@ -7,25 +7,20 @@ const TokenBlacklistSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    tokenType: {
-      type: String,
-      enum: ["refresh", "access"],
-      default: "refresh",
-    },
     expiresAt: {
       type: Date,
       required: true,
       index: { expires: 0 }, // Auto-delete expired documents
     },
-    reason: {
-      type: String,
-      enum: ["logout", "rotation", "revoked"],
-      default: "logout",
-    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    reason: {
+      type: String,
+      enum: ["logout", "rotation", "revoked"],
+      default: "logout",
     },
   },
   {
@@ -42,14 +37,12 @@ TokenBlacklistSchema.statics.isBlacklisted = async function (token) {
 // Add a method to blacklist a token
 TokenBlacklistSchema.statics.blacklist = async function (
   token,
-  tokenType,
   expiresAt,
   userId,
   reason = "logout"
 ) {
   return await this.create({
     token,
-    tokenType,
     expiresAt,
     userId,
     reason,

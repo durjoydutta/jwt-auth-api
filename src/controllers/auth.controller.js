@@ -220,13 +220,7 @@ export const signOut = async (req, res) => {
       const expiresAt = new Date(decoded.exp * 1000);
 
       // Add to blacklist
-      await TokenBlacklist.blacklist(
-        refreshToken,
-        "refresh",
-        expiresAt,
-        userId,
-        "logout"
-      );
+      await TokenBlacklist.blacklist(refreshToken, expiresAt, userId, "logout");
 
       // Clear the refresh token in the database
       if (userId) {

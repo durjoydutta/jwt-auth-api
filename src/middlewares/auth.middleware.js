@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import { ACCESS_TOKEN_SECRET } from "../../config/env.config.js";
 import User from "../models/user.model.js";
-import TokenBlacklist from "../models/tokenBlacklist.model.js";
 
 const authMiddleWare = async (req, res, next) => {
   try {
@@ -13,14 +12,6 @@ const authMiddleWare = async (req, res, next) => {
       return res
         .status(401)
         .json({ message: "Unauthorized or missing access token" });
-    }
-
-    // Check if token is blacklisted (optional for access tokens)
-    const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
-    if (isBlacklisted) {
-      return res.status(401).json({
-        message: "Access token has been revoked",
-      });
     }
 
     const decodedToken = jwt.verify(token, ACCESS_TOKEN_SECRET);
