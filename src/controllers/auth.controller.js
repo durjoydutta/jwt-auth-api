@@ -1,13 +1,23 @@
 import User from "../models/user.model.js";
-import { NODE_ENV } from "../../config/env.config.js";
+import jwt from "jsonwebtoken";
+import { NODE_ENV, REFRESH_TOKEN_SECRET } from "../../config/env.config.js";
 import sendVerificationMailHelper from "../../utils/sendVerificationMailHelper.js";
 import sendPasswordResetMailHelper from "../../utils/sendPasswordResetMailHelper.js";
 import { genOTP, otpExpires } from "../../utils/generateOTP.js";
+import TokenBlacklist from "../models/tokenBlacklist.model.js";
 
-const cookieOptions = {
-  expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-  httpOnly: true,
-  secure: NODE_ENV === "production", // use secure in production
+// Update your cookie options
+const accessTokenCookieOptions = {
+  expires: new Date(Date.now() + 30 * 1000), // 30 seconds
+  httpOnly: false, // Allow JavaScript access to the access token
+  secure: NODE_ENV === "production",
+  sameSite: NODE_ENV === "production" ? "None" : "Lax",
+};
+
+const refreshTokenCookieOptions = {
+  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+  httpOnly: true, // Prevent JavaScript access
+  secure: NODE_ENV === "production",
   sameSite: NODE_ENV === "production" ? "None" : "Lax",
 };
 
@@ -72,10 +82,12 @@ export const signIn = async (req, res) => {
     }
 
     // Find user by username and include password for verification
-    const user = await User.findOne({ username }).select("+password");
+    const user = await User.findOne({ username }).select(
+      "+password +isDeleted"
+    );
 
     // Check if user exists
-    if (!user) {
+    if (!user || user.isDeleted) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
@@ -89,14 +101,6 @@ export const signIn = async (req, res) => {
       });
     }
 
-    // if (!user.isVerified) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "Please verify your email before logging in",
-    //     isVerified: false, // Flag to indicate unverified user
-    //   });
-    // }
-
     // Check if password is correct
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
@@ -106,16 +110,21 @@ export const signIn = async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = await user.generateAuthToken();
+    // Generate access token
+    const accessToken = await user.generateAccessToken();
 
-    res.cookie("jwt", token, cookieOptions);
+    // Generate refresh token
+    const refreshToken = await user.generateRefreshToken();
+
+    // Set cookies
+    res.cookie("accessToken", accessToken, accessTokenCookieOptions);
+    res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
 
     // Send response
     return res.status(200).json({
       success: true,
       message: "Logged in successfully",
-      token,
+      accessToken, // Send in response body for local storage/state management
       data: {
         username: user.username,
         email: user.email,
@@ -131,9 +140,101 @@ export const signIn = async (req, res) => {
   }
 };
 
-export const signOut = (req, res) => {
+// Add refresh token endpoint
+export const refreshToken = async (req, res) => {
   try {
-    res.clearCookie("jwt", cookieOptions);
+    // Get the refresh token from cookies
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token is required",
+      });
+    }
+
+    // Check if token is blacklisted
+    const isBlacklisted = await TokenBlacklist.isBlacklisted(refreshToken);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token has been revoked",
+      });
+    }
+
+    // Verify the refresh token
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+    // Find the user with this refresh token
+    const user = await User.findOne({ _id: decoded._id }).select(
+      "+refreshToken +refreshTokenExpires"
+    );
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token",
+      });
+    }
+
+    // Verify that the stored refresh token matches and hasn't expired
+    if (
+      user.refreshToken !== refreshToken ||
+      user.refreshTokenExpires < new Date()
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired refresh token",
+      });
+    }
+
+    // Generate a new access token
+    const newAccessToken = await user.generateAccessToken();
+
+    // Set new access token cookie
+    res.cookie("accessToken", newAccessToken, accessTokenCookieOptions);
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      accessToken: newAccessToken, // Include in response for non-cookie usage
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid refresh token",
+      error: error.message,
+    });
+  }
+};
+
+export const signOut = async (req, res) => {
+  try {
+    // Get the user from the request (added by authMiddleware)
+    const userId = req.userId;
+    const refreshToken = req.cookies.refreshToken;
+
+    // If a refresh token exists, blacklist it
+    if (refreshToken) {
+      const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+      const expiresAt = new Date(decoded.exp * 1000);
+
+      // Add to blacklist
+      await TokenBlacklist.blacklist(refreshToken, expiresAt, userId, "logout");
+
+      // Clear the refresh token in the database
+      if (userId) {
+        await User.findByIdAndUpdate(userId, {
+          refreshToken: null,
+          refreshTokenExpires: null,
+        });
+      }
+    }
+
+    // Clear cookies
+    res.clearCookie("accessToken", accessTokenCookieOptions);
+    res.clearCookie("refreshToken", refreshTokenCookieOptions);
+
     return res.status(200).json({
       success: true,
       message: "Logged out successfully",
@@ -166,7 +267,7 @@ export const isAuthenticated = (req, res) => {
 
 export const sendVerificationMail = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(400).json({
@@ -230,12 +331,13 @@ export const sendVerificationMail = async (req, res) => {
 // and to update the user status to verified
 export const verifyOTP = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
+    const userId = req.userId; // Changed from req.body.userId
+    const { otp } = req.body;
 
     if (!userId || !otp) {
       return res.status(400).json({
         success: false,
-        message: "User ID and OTP are required",
+        message: "OTP is required",
       });
     }
 

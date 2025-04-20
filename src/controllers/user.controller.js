@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 
 export const getSelf = async (req, res) => {
-  const user = req.body?.user;
+  const user = req.user;
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -14,7 +14,7 @@ export const getUserById = async (req, res) => {
     return res.status(400).json({ message: "User ID is required" });
   }
   try {
-    const user = await User.findById(id);
+    const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -26,8 +26,8 @@ export const getUserById = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({ role: "user" });
-    const admins = await User.find({ role: "admin" });
+    const users = await User.find({ role: "user", isDeleted: { $ne: true } });
+    const admins = await User.find({ role: "admin", isDeleted: { $ne: true } });
     return res.status(200).json({ users, admins });
   } catch (error) {
     return res.status(500).json({ message: "Error fetching users", error });
@@ -50,7 +50,9 @@ export const updateUserRole = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
     if (user.role === role) {
-      return res.status(400).json({ message: `${user.username} already has the role: ${role.toUpperCase()}` });
+      return res.status(400).json({
+        message: `${user.username} already has the role: ${role.toUpperCase()}`,
+      });
     }
 
     user.role = role;
@@ -67,24 +69,98 @@ export const updateUserRole = async (req, res) => {
 export const deleteUser = async (req, res) => {
   const { id } = req.params; // id of user to be deleted
   if (!id) {
-    return res.status(400).json({ message: "User ID is required" });
+    return res
+      .status(400)
+      .json({ message: "User ID is required for the user to be deleted" });
   }
-  console.log(req);
+
   try {
     const delUser = await User.findOne({ _id: id });
     if (!delUser) {
       return res.status(404).json({ message: "User not found" });
     }
-    if (delUser.role === "admin") {
+
+    const currUser = req.user; // Changed from req.body?.user
+    if (!currUser) {
       return res
-        .status(400)
-        .json({ message: `[${delUser.username}] has Administrator privileges and cannot be deleted.` });
+        .status(404)
+        .json({ message: "current user cannot be identified" });
     }
-    await User.deleteOne({ _id: id }); // delete the user
-    return res.status(200).json({ 
-        success: true,
-        message: `User ${delUser.username} has been successfully deleted from the database.` });
+    // admins cannot delete other admins
+    // only admins can delete users
+    // admins can delete themselves
+    if (currUser.username !== delUser.username && delUser.role === "admin") {
+      return res.status(400).json({
+        message: `[${delUser.username}] has Administrator privileges and cannot be deleted.`,
+      });
+    }
+    
+    delUser.isDeleted = true;
+    delUser.deletedBy = req.userId; // Record who deleted the user
+    await delUser.save();
+    return res.status(200).json({
+      success: true,
+      message: `User ${delUser.username} has been successfully deleted.`,
+    });
   } catch (error) {
     return res.status(500).json({ message: "Error deleting user", error });
+  }
+};
+
+export const undeleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({
+      message: "User ID is required for restoration",
+    });
+  }
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.isDeleted) {
+      return res.status(400).json({
+        message: "User is not deleted and doesn't need restoration",
+      });
+    }
+
+    // Restore the user
+    user.isDeleted = false;
+    user.deletedBy = null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `User ${user.username} has been successfully restored`,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error restoring user",
+      error: error.message,
+    });
+  }
+};
+
+export const getDeletedUsers = async (req, res) => {
+  try {
+    const deletedUsers = await User.find({ isDeleted: true }).populate(
+      "deletedBy",
+      "username"
+    );
+
+    return res.status(200).json({
+      count: deletedUsers.length,
+      deletedUsers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching deleted users",
+      error: error.message,
+    });
   }
 };
