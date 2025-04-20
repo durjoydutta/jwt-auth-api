@@ -1,7 +1,12 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/env.config.js";
+import {
+  REFRESH_TOKEN_SECRET,
+  REFRESH_TOKEN_EXPIRES_IN,
+  ACCESS_TOKEN_SECRET,
+  ACCESS_TOKEN_EXPIRES_IN,
+} from "../../config/env.config.js";
 
 const UserSchema = new mongoose.Schema(
   {
@@ -55,10 +60,27 @@ const UserSchema = new mongoose.Schema(
       default: false,
       select: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
+    },
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    refreshTokenExpires: {
+      type: Date,
+      select: false,
     },
   },
   {
@@ -92,18 +114,32 @@ UserSchema.pre("updateOne", async function (next) {
 });
 
 // Method to generate access token
-UserSchema.methods.generateAuthToken = async function () {
-  return await jwt.sign(
-    { _id: this._id, username: this.username, email: this.username },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+UserSchema.methods.generateAccessToken = async function () {
+  return jwt.sign(
+    { _id: this._id, username: this.username, email: this.email },
+    ACCESS_TOKEN_SECRET,
+    { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
   );
+};
+
+// Method to generate refresh token
+UserSchema.methods.generateRefreshToken = async function () {
+  const refreshToken = jwt.sign({ _id: this._id }, REFRESH_TOKEN_SECRET, {
+    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+  });
+
+  // Store refresh token with user
+  this.refreshToken = refreshToken;
+  this.refreshTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await this.save();
+
+  return refreshToken;
 };
 
 // Method to verify user's access token
 UserSchema.statics.findByToken = async function (token) {
   try {
-    const decoded = await jwt.verify(token, JWT_SECRET);
+    const decoded = await jwt.verify(token, ACCESS_TOKEN_SECRET);
     return decoded._id;
   } catch (error) {
     console.error("Invalid token:", error);

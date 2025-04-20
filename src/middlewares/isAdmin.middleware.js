@@ -1,5 +1,5 @@
 const isAdmin = (req, res, next) => {
-  const user = req.body?.user;
+  const user = req.user;
   if (!user) {
     return res
       .status(403)

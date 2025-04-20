@@ -30,3 +30,4 @@ dist-ssr
 !.env.project
 !.env.vault
 .vercel
+.env*

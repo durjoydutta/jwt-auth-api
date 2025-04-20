@@ -3,9 +3,9 @@ POST http://localhost:5500/api/v1/auth/sign-up
 Content-Type: application/json
     
 {
-    "username": "deluxebits1337",
-    "password": "mynewpassword",
-    "email": "deluxebits1337@gmail.com"
+    "username": "testuser123",
+    "password": "securepassword123",
+    "email": "test@example.com"
 }
 
 ### sign-in
@@ -13,35 +13,49 @@ POST http://localhost:5500/api/v1/auth/sign-in
 Content-Type: application/json
 
 {
-    "username": "deluxebits1337",
-    "password": "mynewpassword"
+    "username": "testuser123",
+    "password": "securepassword123"
 }
 
-### sign-out
+### refresh token (relies on httpOnly cookie - no body needed)
+POST http://localhost:5500/api/v1/auth/refresh
+Content-Type: application/json
+
+### sign-out (relies on httpOnly cookie for refresh token)
 POST http://localhost:5500/api/v1/auth/sign-out
 Content-Type: application/json
 
-{
-    "username": "deluxebits1337",
-    "password": "mynewpassword"
-}
-
-### verification-mail
-POST http://localhost:5500/api/v1/auth/verification-mail
-Content-Type: application/json
-
-{
-    "username": "deluxebits1337"
-}
-
-### verify-otp
-POST http://localhost:5500/api/v1/auth/verify-otp
-Content-Type: application/json
-
-{
-    "username": "deluxebits1337",
-    "otp": "546016"
-}
-
 ### is-auth (uses access token to verify if user is authenticated)
 GET http://localhost:5500/api/v1/auth/is-auth
+Authorization: Bearer your_access_token_here
+
+### verify email (requires auth - set token in Authorization header)
+POST http://localhost:5500/api/v1/auth/verification-mail
+Authorization: Bearer your_access_token_here
+
+### confirm verification OTP
+POST http://localhost:5500/api/v1/auth/verify-otp
+Authorization: Bearer your_access_token_here
+Content-Type: application/json
+
+{
+    "otp": "123456"
+}
+
+### request password reset
+POST http://localhost:5500/api/v1/auth/reset-password
+Content-Type: application/json
+
+{
+    "email": "test@example.com"
+}
+
+### confirm password reset
+POST http://localhost:5500/api/v1/auth/verify-reset-password
+Content-Type: application/json
+
+{
+    "username": "testuser123",
+    "otp": "123456",
+    "newPassword": "newSecurePassword123"
+}
